@@ -5,11 +5,10 @@
 #ifndef __config_h
 #define __config_h
 
-#define OUTPUTFILE "boids.bin"
 #define N 1000
-#define WIDTH 1000
-#define HEIGHT 800
-#define MARGIN 200
+#define WIDTH 600
+#define HEIGHT 600
+#define MARGIN 100
 
 #define PI 3.14159265358979323846
 
@@ -27,13 +26,6 @@
 
 #define MAXSPEED 6
 #define MINSPEED 3
-
-typedef struct Boid_t {
-    double px;
-    double py;
-    double vx;
-    double vy;
-} Boid;
 
 
 #endif

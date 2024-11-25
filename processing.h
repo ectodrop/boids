@@ -4,6 +4,6 @@
 #define __processing_h
 
 void create_gif();
-void create_gnuplot_script();
-void dump(FILE *file, Boid boids[N], size_t n);
+void create_gnuplot_script(const char *);
+void dump(FILE *file, void *boids, size_t s, int n);
 #endif

@@ -1,10 +1,10 @@
 # Compiler and compiler flags
 CC = g++
 CFLAGS = -Wall -g
-LIBS= -lm
+LIBS= -lm -fopenmp
 
 # Source files (modify these lists as needed)
-MAINSRCS = main_serial.cpp
+MAINSRCS = main_serial.cpp main_serial_grid.cpp main_omp.cpp
 OTHERSRCS = $(filter-out $(MAINSRCS), $(wildcard *.cpp))
 
 # Header files

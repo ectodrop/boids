@@ -1,7 +1,18 @@
 #include "config.h"
 #include "processing.h"
+#include "clock.h"
 
+#define OUTPUTFILE "boids_serial.bin"
 #define MODULO(a, n) fmod((a), (n)) + (((a) < 0) * (n))
+
+int distance_checks = 0;
+
+typedef struct Boid_t {
+    double px;
+    double py;
+    double vx;
+    double vy;
+} Boid;
 
 double rand_double();
 int can_see(Boid *boid, Boid *other);
@@ -11,6 +22,9 @@ int main(int argc, char** argv) {
     srand(0);
     Boid boids[N];
     FILE *file = fopen(OUTPUTFILE, "wb");
+
+    struct timeval timer;
+    tick(&timer);
     // initialize each boid
     for (int i = 0; i < N; i++) {
         Boid *b = &boids[i];
@@ -24,14 +38,17 @@ int main(int argc, char** argv) {
 
     // update loop
     for (int i = 0; i < TIMESTEPS; i++) {
+        dump(file, boids, sizeof(Boid), N);
         update_boids(boids);
-        dump(file, boids, N);
     }
-
     fclose(file);
+    printf("simulation took: %fs, starting plotting %d\n", tock(&timer), distance_checks);
 
-    // create_gnuplot_script();
-    // create_gif();
+    tick(&timer);
+    create_gnuplot_script(OUTPUTFILE);
+    create_gif();
+
+    printf("plotting took: %f\n", tock(&timer));
 }
 
 
@@ -42,12 +59,17 @@ double rand_double() {
 int can_see(Boid *boid, Boid *other) {
     double dx = other->px - boid->px;
     double dy = other->py - boid->py;
+    double dot = dx*boid->vx + dy*boid->vy; 
 
-    double dnorm = sqrt(dx*dx + dy*dy);
-    double vnorm = sqrt(boid->vx*boid->vx + boid->vy*boid->vy);
+    if (dot < 0)
+        return 0;
 
-    return ((dx*boid->vx + dy*boid->vy)/(dnorm*vnorm) > cos(FOV*PI/180));
+    double theta = cos(FOV*PI/180);
+    double dnorm = dx*dx + dy*dy;
+    double vnorm = boid->vx*boid->vx + boid->vy*boid->vy;
+    return ((dot*dot)/(dnorm*vnorm) > theta*theta);
 }
+
 
 void update_boids(Boid boids[N]) {
     Boid old_boids[N];
@@ -69,12 +91,13 @@ void update_boids(Boid boids[N]) {
 
             // if within protected range
             double dst_sqr = dx*dx + dy*dy;
-            if (!can_see(boid, other))
-                continue;
+            if (!can_see(boid, other)) continue;
+
             if (dst_sqr < PRANGE*PRANGE) {
                 close_dx += dx;
                 close_dy += dy;
             } else if (dst_sqr < VRANGE*VRANGE) {
+                distance_checks++;
                 xpos_avg += other->px;
                 ypos_avg += other->py;
                 xvel_avg += other->vx;
@@ -115,7 +138,7 @@ void update_boids(Boid boids[N]) {
             new_boid->vy = (new_boid->vy/speed)*MAXSPEED;
         }
 
-        new_boid->px += new_boid->vx;
-        new_boid->py += new_boid->vy;
+        new_boid->px = fmin(WIDTH, fmax(new_boid->px + new_boid->vx, 0));
+        new_boid->py = fmin(HEIGHT, fmax(new_boid->py + new_boid->vy, 0));
     }
 }
