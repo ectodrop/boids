@@ -1,2 +1,9 @@
 
 *.o
+*.bin
+.vscode
+main_serial
+main_serial_grid
+main_omp
+main_omp_grid
+main_omp_mpi_grid

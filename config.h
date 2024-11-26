@@ -5,10 +5,10 @@
 #ifndef __config_h
 #define __config_h
 
-#define N 1000
-#define WIDTH 600
-#define HEIGHT 600
-#define MARGIN 100
+#define N 30000
+#define WIDTH 800
+#define HEIGHT 800
+#define MARGIN 2
 
 #define PI 3.14159265358979323846
 
@@ -19,10 +19,10 @@
 
 #define COHERENCE 0.0005 // centering
 #define SEPERATION 0.1 // avoiding
-#define ALIGNMENT 0.1 // matching
+#define ALIGNMENT 0.4 // matching
 #define TURNFACTOR 0.2
 
-#define FOV 20
+#define FOV 120
 
 #define MAXSPEED 6
 #define MINSPEED 3

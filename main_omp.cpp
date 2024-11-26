@@ -81,7 +81,6 @@ void update_boids(Boid boids[N]) {
 
         Boid *boid = &old_boids[i];
         Boid *new_boid = &boids[i];
-        #pragma omp parallel for shared(boid,new_boid,boids, old_boids) reduction(+:xpos_avg,ypos_avg,xvel_avg,yvel_avg,close_dx,close_dy,neighbouring_boids)
         for (int j = 0; j < N; j++) {
             if (i == j) continue;
             Boid *other = &old_boids[j];

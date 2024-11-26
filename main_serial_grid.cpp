@@ -161,12 +161,12 @@ void update_boids(int grid[GRID_ROWS+2][GRID_COLS+2], Boid *old_boids, Boid *new
                             double dst_sqr = dx*dx + dy*dy;
 
                             if (dst_sqr < PRANGE*PRANGE) {
-                                // if (can_see(boid, other)) {
+                                if (can_see(boid, other)) {
                                     close_dx += dx;
                                     close_dy += dy;
-                                // }
+                                }
                             } else if (dst_sqr < VRANGE*VRANGE) {
-                                // if (can_see(boid, other)) {
+                                if (can_see(boid, other)) {
                                     distance_checks++;
                                     xpos_avg += other->px;
                                     ypos_avg += other->py;
@@ -174,7 +174,7 @@ void update_boids(int grid[GRID_ROWS+2][GRID_COLS+2], Boid *old_boids, Boid *new
                                     yvel_avg += other->vy;
 
                                     neighbouring_boids++;
-                                // }
+                                }
                             }
                         }
                     }

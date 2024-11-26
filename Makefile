@@ -1,10 +1,10 @@
 # Compiler and compiler flags
-CC = g++
-CFLAGS = -Wall -g
-LIBS= -lm -fopenmp
+CC = mpicxx
+CFLAGS = -Wall -g -O0
+LIBS= -lm
 
 # Source files (modify these lists as needed)
-MAINSRCS = main_serial.cpp main_serial_grid.cpp main_omp.cpp
+MAINSRCS = main_serial.cpp main_serial_grid.cpp main_omp.cpp main_omp_grid.cpp main_omp_mpi_grid.cpp
 OTHERSRCS = $(filter-out $(MAINSRCS), $(wildcard *.cpp))
 
 # Header files
@@ -34,4 +34,4 @@ $(EXECUTABLES): % : %.o $(OTHEROBJS)
 
 # Clean up generated files
 clean:
-	rm -f $(EXECUTABLES) *.o
+	rm -f $(EXECUTABLES) *.o *.bin
