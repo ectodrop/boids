@@ -3,7 +3,7 @@
 #include "clock.h"
 
 
-#define OUTPUTFILE "boids_omp_grid.bin"
+#define OUTPUTFILE "boids_omp_grid_%03d.bin"
 #define MODULO(a, n) fmod((a), (n)) + (((a) < 0) * (n))
 #define CELL_SIZE (VRANGE)
 #define GRID_ROWS (int)(HEIGHT/CELL_SIZE) 
@@ -71,7 +71,10 @@ int main(int argc, char** argv) {
     }
     Boid *old_boids = new Boid[N];
     Boid *new_boids = new Boid[N];
-    FILE *file = fopen(OUTPUTFILE, "wb");
+
+    char filename[100];
+    sprintf(filename, OUTPUTFILE, 0);
+    FILE *file = fopen(filename, "wb");
 
     struct timeval timer;
     tick(&timer);
@@ -96,18 +99,32 @@ int main(int argc, char** argv) {
     // update loop
     printf("sizeof %ld %ld %ld\n", sizeof(double),sizeof(int),sizeof(Boid));
     for (int i = 0; i < TIMESTEPS; i++) {
+        printf("time %d\n", i);
+        for (int row = 0; row < GRID_ROWS+2; row++) {
+            for (int col = 0; col < GRID_COLS+2; col++) {
+                int ind = grid[row][col];
+                int count = 0;
+                while (ind != -1) {
+                    count++;
+                    ind = old_boids[ind].next;
+                }
+                printf("%4d,", count);
+            }
+            printf("\n");
+        }
+        if (i > 0 && i % 100 == 0) {
+            fclose(file);
+            sprintf(filename, OUTPUTFILE, (int)(i/100));
+            file = fopen(filename, "wb");
+        }
         dump(file, old_boids, sizeof(Boid), N);
         update_boids(grid, old_boids, new_boids);
     }
 
     fclose(file);
-    printf("simulation took: %fs, starting plotting %d\n", tock(&timer), distance_checks);
+    printf("simulation took: %fs\n", tock(&timer));
 
-    tick(&timer);
     create_gnuplot_script(OUTPUTFILE);
-    create_gif();
-
-    printf("plotting took: %f\n", tock(&timer));
     free(new_boids);
     free(old_boids);
 }

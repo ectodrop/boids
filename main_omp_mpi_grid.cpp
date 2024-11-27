@@ -5,7 +5,9 @@
 #include <bits/stdc++.h>
 
 
-#define OUTPUTFILE "boids_omp_grid_%02d_%03d.bin"
+#define OUTPUTFILE "boids_omp_grid_mpi_%02d_%03d.bin"
+#define OUTPUTFILESEARCH "boids_omp_grid_mpi_*_%03d.bin"
+#define AGGREGATE_OUTPUTFILE "boids_omp_grid_mpi_%03d.bin"
 #define MODULO(a, n) fmod((a), (n)) + (((a) < 0) * (n))
 #define CELL_SIZE (VRANGE)
 #define GRID_ROWS (int)(HEIGHT/CELL_SIZE) 
@@ -39,6 +41,24 @@ int num_boids = 0;
 double rand_double();
 int can_see(Boid *boid, Boid *other);
 void update_boids(int rank, int grid[LOCAL_GRID_ROWS+2][LOCAL_GRID_COLS+2], Boid *old_boids, Boid *new_boids);
+
+void dump_grid(FILE *file, int grid[LOCAL_GRID_ROWS+2][LOCAL_GRID_COLS+2], Boid *boids) {
+    double boids_buf[N*2];
+    int total = 0;
+    for (int i = 1; i <= LOCAL_GRID_ROWS; i++) {
+        for (int j = 1; j <= LOCAL_GRID_COLS; j++) {
+            int ind = grid[i][j];
+            while (ind != -1) {
+                boids_buf[total*2] = boids[ind].px;
+                boids_buf[total*2+1] = boids[ind].py;
+                total++;
+                ind = boids[ind].next;
+            }
+        }
+    }
+    fwrite(&total, sizeof(int), 1, file);
+    fwrite(boids_buf, sizeof(double), total*2, file);
+}
 
 void grid_insert(int rank,int grid[LOCAL_GRID_ROWS+2][LOCAL_GRID_COLS+2], Boid *boids, int boid) {
     int mi = MPI_ROW(rank); // mpi row index for current process
@@ -136,11 +156,16 @@ int main(int argc, char** argv) {
     Boid *old_boids = new Boid[N];
     Boid *new_boids = new Boid[N];
 
+    int *send_ids = new int[5*N];
     Boid *send_boids = new Boid[5*N];
     Boid *recv_boids = new Boid[5*N];
 
     char filename[100];
+    char aggregate_filename[100];
+    char search_str[100];
     sprintf(filename, OUTPUTFILE, rank,0);
+    sprintf(aggregate_filename, AGGREGATE_OUTPUTFILE, 0);
+    sprintf(search_str, OUTPUTFILESEARCH, 0);
     FILE *file = fopen(filename, "wb");
 
     struct timeval timer;
@@ -158,13 +183,19 @@ int main(int argc, char** argv) {
         b->prev = -1;
         b->id = i;
 
-        int boid_mi = fmin(MPI_ROWS-1, fmax((int)(b->py / MPI_HEIGHT), 0));
-        int boid_mj = fmin(MPI_COLS-1, fmax((int)(b->px / MPI_WIDTH), 0)); 
+        int boid_i = floor((b->py - mi*MPI_HEIGHT) / (double)CELL_SIZE)+1;
+        int boid_j = floor((b->px - mj*MPI_WIDTH) / (double)CELL_SIZE)+1;
 
-        if (mi == boid_mi && mj == boid_mj) {
+        if ((0 <= boid_i && boid_i <= LOCAL_GRID_ROWS+1) && (0 <= boid_j && boid_j <= LOCAL_GRID_COLS+1)) {
             // this is our boid
             num_boids++;
-            grid_insert(rank, grid, old_boids, i);
+
+            b->prev = -1;
+            b->next = grid[boid_i][boid_j];
+            if (grid[boid_i][boid_j] != -1)
+                old_boids[grid[boid_i][boid_j]].prev = i;
+            
+            grid[boid_i][boid_j] = i;
         }
     }
 
@@ -193,14 +224,43 @@ int main(int argc, char** argv) {
     const int neighbours[5] = { top_rank, bot_rank, left_rank, right_rank, corner};
     // update loop
     for (int i = 0; i < TIMESTEPS; i++) {
+        printf("time %d\n", i);
+        for (int row = 0; row < LOCAL_GRID_ROWS+2; row++) {
+            for (int col = 0; col < LOCAL_GRID_COLS+2; col++) {
+                int ind = grid[row][col];
+                int count = 0;
+                while (ind != -1) {
+                    count++;
+                    ind = new_boids[ind].next;
+                }
+                printf("%4d,", count);
+            }
+            printf("\n");
+        }
         if (i > 0 && i % 100 == 0) {
             fclose(file);
+            MPI_Barrier(MPI_COMM_WORLD);
             sprintf(filename, OUTPUTFILE, rank, (int)(i/100));
+            if (rank == 0) {
+                aggregate_partial(size, search_str, aggregate_filename);
+                sprintf(aggregate_filename, AGGREGATE_OUTPUTFILE, (int)(i/100));
+                sprintf(search_str, OUTPUTFILESEARCH, (int)(i/100));
+            }
             file = fopen(filename, "wb");
         }
         update_boids(rank, grid, old_boids, new_boids);
-        // rank == 0 // top left
-
+        for (int row = 0; row < LOCAL_GRID_ROWS+2; row++) {
+            for (int col = 0; col < LOCAL_GRID_COLS+2; col++) {
+                int ind = grid[row][col];
+                int count = 0;
+                while (ind != -1) {
+                    count++;
+                    ind = new_boids[ind].next;
+                }
+                printf("%4d,", count);
+            }
+            printf("\n");
+        }
         int counts[5] = { 0 };
 
         int ind, j, boid_mi, boid_mj;
@@ -210,7 +270,7 @@ int main(int argc, char** argv) {
                 ind = grid[1][j];
                 while (ind != -1) {
                     int tmp = new_boids[ind].next; 
-                    send_boids[N*0 + counts[0]++] = new_boids[ind];
+                    send_ids[N*0 + counts[0]++] = ind;
                     boid_mi = fmin(MPI_ROWS-1, fmax((int)(new_boids[ind].py / MPI_HEIGHT), 0));
                     boid_mj = fmin(MPI_COLS-1, fmax((int)(new_boids[ind].px / MPI_WIDTH), 0)); 
                     if (mi != boid_mi && mj == boid_mj) grid_remove(rank, grid, new_boids, ind);
@@ -221,7 +281,7 @@ int main(int argc, char** argv) {
                 ind = grid[LOCAL_GRID_ROWS][j];
                 while (ind != -1) {
                     int tmp = new_boids[ind].next; 
-                    send_boids[N*1 + counts[1]++] = new_boids[ind];
+                    send_ids[N*1 + counts[1]++] = ind;
                     boid_mi = fmin(MPI_ROWS-1, fmax((int)(new_boids[ind].py / MPI_HEIGHT), 0));
                     boid_mj = fmin(MPI_COLS-1, fmax((int)(new_boids[ind].px / MPI_WIDTH), 0)); 
                     if (mi != boid_mi && mj == boid_mj) grid_remove(rank, grid, new_boids, ind);
@@ -235,7 +295,7 @@ int main(int argc, char** argv) {
                 ind = grid[j][1];
                 while (ind != -1) {
                     int tmp = new_boids[ind].next; 
-                    send_boids[N*2 + counts[2]++] = new_boids[ind];
+                    send_ids[N*2 + counts[2]++] = ind;
                     boid_mi = fmin(MPI_ROWS-1, fmax((int)(new_boids[ind].py / MPI_HEIGHT), 0));
                     boid_mj = fmin(MPI_COLS-1, fmax((int)(new_boids[ind].px / MPI_WIDTH), 0)); 
                     if (mi == boid_mi && mj != boid_mj) grid_remove(rank, grid, new_boids, ind);
@@ -246,7 +306,7 @@ int main(int argc, char** argv) {
                 ind = grid[j][LOCAL_GRID_COLS];
                 while (ind != -1) {
                     int tmp = new_boids[ind].next; 
-                    send_boids[N*3 + counts[3]++] = new_boids[ind];
+                    send_ids[N*3 + counts[3]++] = ind;
                     boid_mi = fmin(MPI_ROWS-1, fmax((int)(new_boids[ind].py / MPI_HEIGHT), 0));
                     boid_mj = fmin(MPI_COLS-1, fmax((int)(new_boids[ind].px / MPI_WIDTH), 0)); 
                     if (mi == boid_mi && mj != boid_mj) grid_remove(rank, grid, new_boids, ind);
@@ -272,16 +332,20 @@ int main(int argc, char** argv) {
             ind = grid[row][col];
             while (ind != -1) {
                 int tmp = new_boids[ind].next; 
-                send_boids[N*4 + counts[4]++] = new_boids[ind];
+                send_ids[N*4 + counts[4]++] = ind;
                 boid_mi = fmin(MPI_ROWS-1, fmax((int)(new_boids[ind].py / MPI_HEIGHT), 0));
                 boid_mj = fmin(MPI_COLS-1, fmax((int)(new_boids[ind].px / MPI_WIDTH), 0)); 
                 if (mi != boid_mi && mj != boid_mj) grid_remove(rank, grid, new_boids, ind);
                 ind = tmp;
             }
         }
+
         MPI_Request recv_requests[5], send_requests[5];
         for (j = 0; j < 5; j++) {
             int n = neighbours[j];
+            for (int k = 0; k < counts[j]; k++) {
+                send_boids[j*N + k] = new_boids[send_ids[j*N+k]];
+            }
 
             MPI_Isend(&send_boids[j*N], counts[j], MPI_BOID, n, 0, MPI_COMM_WORLD, &send_requests[j]);
             MPI_Irecv(&recv_boids[j*N], N, MPI_BOID, n, 0, MPI_COMM_WORLD, &recv_requests[j]);
@@ -303,29 +367,37 @@ int main(int argc, char** argv) {
                     new_boids[b.id].next = -1;
                     grid_insert(rank, grid, new_boids, b.id);
                 } else if (b.prev == -1) { // the head of a list
-                    int bi = fmin(LOCAL_GRID_ROWS+1, fmax((b.py - mi*MPI_HEIGHT) / CELL_SIZE + 1,0));  
-                    int bj = fmin(LOCAL_GRID_COLS+1, fmax((b.px - mj*MPI_WIDTH) / CELL_SIZE + 1,0));  
-                    grid[bi][bj] = -1;
+                    int bi = fmin(LOCAL_GRID_ROWS+1, fmax(floor(b.py - mi*MPI_HEIGHT / CELL_SIZE) + 1,0));  
+                    int bj = fmin(LOCAL_GRID_COLS+1, fmax(floor(b.px - mj*MPI_WIDTH / CELL_SIZE) + 1,0));  
+                    grid[bi][bj] = b.id;
                 }
-            }
 
+            }
         }
+        dump_grid(file, grid, new_boids);
+        // dump(file, new_boids, sizeof(Boid), N);
         MPI_Waitall(5, send_requests, MPI_STATUSES_IGNORE);
 
-        for (int i = 0; i < N; i++) {
-            old_boids[i] = new_boids[i];
+        for (int j = 0; j < N; j++) {
+            old_boids[j] = new_boids[j];
         }
 
-        dump(file, old_boids, sizeof(Boid), N);
     }
 
+
     fclose(file);
+    if (rank == 0) {
+        aggregate_partial(size, search_str, aggregate_filename);
+    }
     printf("simulation took: %fs, creating plot script %d\n", tock(&timer), distance_checks);
 
     create_gnuplot_script(OUTPUTFILE);
 
     free(new_boids);
     free(old_boids);
+    free(recv_boids);
+    free(send_boids);
+    free(send_ids);
 
     MPI_Finalize();
 }
