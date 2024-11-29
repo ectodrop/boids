@@ -9,6 +9,8 @@
 #define GRID_ROWS (int)(HEIGHT/CELL_SIZE) 
 #define GRID_COLS (int)(WIDTH/CELL_SIZE) 
 
+#define IMAGE_HEIGHT 90
+#define IMAGE_WIDTH 120
 typedef struct Boid_t {
     double px;
     double py;
@@ -18,6 +20,7 @@ typedef struct Boid_t {
     int prev;
 } Boid;
 
+int *buf;
 
 int distance_checks = 0;
 double rand_double();
@@ -61,7 +64,15 @@ void grid_recalculate(int grid[GRID_ROWS+2][GRID_COLS+2], Boid *boids, int new_b
     }
 }
 
+
 int main(int argc, char** argv) {
+    FILE *f = fopen("./apple/apple.bin", "rb");
+    int frames = 6562;
+    int buf_size = sizeof(int)*IMAGE_HEIGHT*IMAGE_WIDTH*frames;
+    int *buffer = (int*)malloc(buf_size);
+    buf = buffer;
+    fread(buf, buf_size, 1, f);
+    buf += IMAGE_HEIGHT*IMAGE_WIDTH*30;
     srand(0);
     int grid[GRID_ROWS+2][GRID_COLS+2];
     for (int i = 0; i < GRID_ROWS+2; i++) {
@@ -100,21 +111,12 @@ int main(int argc, char** argv) {
     printf("sizeof %ld %ld %ld\n", sizeof(double),sizeof(int),sizeof(Boid));
     for (int i = 0; i < TIMESTEPS; i++) {
         printf("time %d\n", i);
-        for (int row = 0; row < GRID_ROWS+2; row++) {
-            for (int col = 0; col < GRID_COLS+2; col++) {
-                int ind = grid[row][col];
-                int count = 0;
-                while (ind != -1) {
-                    count++;
-                    ind = old_boids[ind].next;
-                }
-                printf("%4d,", count);
-            }
-            printf("\n");
+        if (i % 2 == 0) {
+            buf += IMAGE_HEIGHT*IMAGE_WIDTH;
         }
-        if (i > 0 && i % 100 == 0) {
+        if (i > 0 && i % TIMECHUNK == 0) {
             fclose(file);
-            sprintf(filename, OUTPUTFILE, (int)(i/100));
+            sprintf(filename, OUTPUTFILE, (int)(i/TIMECHUNK));
             file = fopen(filename, "wb");
         }
         dump(file, old_boids, sizeof(Boid), N);
@@ -127,6 +129,7 @@ int main(int argc, char** argv) {
     create_gnuplot_script(OUTPUTFILE);
     free(new_boids);
     free(old_boids);
+    free(buffer);
 }
 
 
@@ -134,18 +137,16 @@ double rand_double() {
     return (double)rand() / RAND_MAX;
 }
 
+
 int can_see(Boid *boid, Boid *other) {
+    static const double theta = cos(FOV*PI/180);
     double dx = other->px - boid->px;
     double dy = other->py - boid->py;
     double dot = dx*boid->vx + dy*boid->vy; 
 
-    if (dot < 0)
-        return 0;
-
-    double theta = cos(FOV*PI/180);
     double dnorm = dx*dx + dy*dy;
     double vnorm = boid->vx*boid->vx + boid->vy*boid->vy;
-    return ((dot*dot)/(dnorm*vnorm) > theta*theta);
+    return (dot/(sqrt(dnorm)*sqrt(vnorm)) > theta);
 }
 
 void update_boids(int grid[GRID_ROWS+2][GRID_COLS+2], Boid *old_boids, Boid *new_boids) {
@@ -157,7 +158,7 @@ void update_boids(int grid[GRID_ROWS+2][GRID_COLS+2], Boid *old_boids, Boid *new
             old_grid[i][j] = grid[i][j];
         }
     }
-    #pragma omp parallel for default(none) shared(old_grid,grid,old_boids,new_boids) collapse(2) schedule(dynamic)
+    #pragma omp parallel for default(none) shared(buf,old_grid,grid,old_boids,new_boids) collapse(2) schedule(dynamic)
     for (int i = 1; i <= GRID_ROWS; i++) {
         for (int j = 1; j <= GRID_COLS; j++) {
             for (int boid_ind = old_grid[i][j]; boid_ind != -1; boid_ind = old_boids[boid_ind].next) {
@@ -222,6 +223,20 @@ void update_boids(int grid[GRID_ROWS+2][GRID_COLS+2], Boid *old_boids, Boid *new
 
                 double speed = sqrt(new_boid->vx*new_boid->vx + new_boid->vy*new_boid->vy);
 
+                int image_x = (boid->px / WIDTH) * IMAGE_WIDTH;
+                int image_y = IMAGE_HEIGHT - (boid->py / HEIGHT) * IMAGE_HEIGHT;
+                int index = image_x + image_y*IMAGE_WIDTH;
+                if (buf[index] != -1) {
+                    int b_x = buf[index] % IMAGE_WIDTH;
+                    int b_y = (buf[index] - (buf[index] % IMAGE_WIDTH)) / IMAGE_WIDTH;
+                    int dx = b_x - image_x;
+                    int dy = b_y - image_y;
+                    if (dx != 0 || dy != 0) {
+                        new_boid->vx += dx*0.1;//(sqrt(dx*dx+dy*dy));
+                        new_boid->vy += dy*0.1;//(sqrt(dx*dx+dy*dy));
+                    }
+                }
+
                 if (speed < MINSPEED) {
                     new_boid->vx = (new_boid->vx/speed)*MINSPEED;
                     new_boid->vy = (new_boid->vy/speed)*MINSPEED;
@@ -231,6 +246,7 @@ void update_boids(int grid[GRID_ROWS+2][GRID_COLS+2], Boid *old_boids, Boid *new
                     new_boid->vx = (new_boid->vx/speed)*MAXSPEED;
                     new_boid->vy = (new_boid->vy/speed)*MAXSPEED;
                 }
+
 
                 new_boid->px = fmin(WIDTH, fmax(new_boid->px + new_boid->vx, 0));
                 new_boid->py = fmin(HEIGHT, fmax(new_boid->py + new_boid->vy, 0));
