@@ -237,14 +237,14 @@ int main(int argc, char** argv) {
             }
             printf("\n");
         }
-        if (i > 0 && i % 100 == 0) {
+        if (i > 0 && i % TIMECHUNK == 0) {
             fclose(file);
             MPI_Barrier(MPI_COMM_WORLD);
-            sprintf(filename, OUTPUTFILE, rank, (int)(i/100));
+            sprintf(filename, OUTPUTFILE, rank, (int)(i/TIMECHUNK));
             if (rank == 0) {
                 aggregate_partial(size, search_str, aggregate_filename);
-                sprintf(aggregate_filename, AGGREGATE_OUTPUTFILE, (int)(i/100));
-                sprintf(search_str, OUTPUTFILESEARCH, (int)(i/100));
+                sprintf(aggregate_filename, AGGREGATE_OUTPUTFILE, (int)(i/TIMECHUNK));
+                sprintf(search_str, OUTPUTFILESEARCH, (int)(i/TIMECHUNK));
             }
             file = fopen(filename, "wb");
         }
