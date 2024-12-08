@@ -66,8 +66,7 @@ void grid_recalculate(int grid[GRID_ROWS+2][GRID_COLS+2], Boid *boids, int new_b
 
 int main(int argc, char** argv) {
     srand(0);
-    FILE *f;
-    if (PER != 0) f = fopen("./apple/apple.bin", "rb");
+    FILE *f = fopen("./apple/apple.bin", "rb");
     int frames = 6562;
     int buf_size = sizeof(int)*IMAGE_HEIGHT*IMAGE_WIDTH*frames;
     int *buffer = (int*)malloc(buf_size);
@@ -78,6 +77,7 @@ int main(int argc, char** argv) {
     const int N = atoi(argv[1]);
     buf = buffer;
     fread(buf, buf_size, 1, f);
+    fclose(f);
     buf += IMAGE_HEIGHT*IMAGE_WIDTH*30;
     int grid[GRID_ROWS+2][GRID_COLS+2];
     for (int i = 0; i < GRID_ROWS+2; i++) {
@@ -90,7 +90,8 @@ int main(int argc, char** argv) {
 
     char filename[100];
     sprintf(filename, OUTPUTFILE, 0);
-    FILE *file = fopen(filename, "wb");
+    FILE *file;
+    if (PER != 0) file = fopen(filename, "wb");
 
     struct timeval timer;
     tick(&timer);
@@ -117,7 +118,7 @@ int main(int argc, char** argv) {
         if (i % 2 == 0) {
             buf += IMAGE_HEIGHT*IMAGE_WIDTH;
         }
-        if (i > 0 && i % TIMECHUNK == 0) {
+        if (i > 0 && i % TIMECHUNK == 0 && PER > 0) {
             fclose(file);
             sprintf(filename, OUTPUTFILE, (int)(i/TIMECHUNK));
             file = fopen(filename, "wb");
@@ -230,19 +231,19 @@ void update_boids(int grid[GRID_ROWS+2][GRID_COLS+2], Boid *old_boids, Boid *new
                 if (boid->py > HEIGHT-MARGIN) new_boid->vy -= TURNFACTOR;
 
 
-                int image_x = (boid->px / WIDTH) * IMAGE_WIDTH;
-                int image_y = IMAGE_HEIGHT - (boid->py / HEIGHT) * IMAGE_HEIGHT;
-                int index = image_x + image_y*IMAGE_WIDTH;
-                if (buf[index] != -1) {
-                    int b_x = buf[index] % IMAGE_WIDTH;
-                    int b_y = (buf[index] - (buf[index] % IMAGE_WIDTH)) / IMAGE_WIDTH;
-                    int dx = b_x - image_x;
-                    int dy = b_y - image_y;
-                    if (dx != 0 || dy != 0) {
-                        new_boid->vx += dx*6;//(sqrt(dx*dx+dy*dy));
-                        new_boid->vy += dy*6;//(sqrt(dx*dx+dy*dy));
-                    }
-                }
+                // int image_x = (boid->px / WIDTH) * IMAGE_WIDTH;
+                // int image_y = IMAGE_HEIGHT - (boid->py / HEIGHT) * IMAGE_HEIGHT;
+                // int index = image_x + image_y*IMAGE_WIDTH;
+                // if (buf[index] != -1) {
+                //     int b_x = buf[index] % IMAGE_WIDTH;
+                //     int b_y = (buf[index] - (buf[index] % IMAGE_WIDTH)) / IMAGE_WIDTH;
+                //     int dx = b_x - image_x;
+                //     int dy = b_y - image_y;
+                //     if (dx != 0 || dy != 0) {
+                //         new_boid->vx += dx*6;//(sqrt(dx*dx+dy*dy));
+                //         new_boid->vy += dy*6;//(sqrt(dx*dx+dy*dy));
+                //     }
+                // }
 
                 double speed = sqrt(new_boid->vx*new_boid->vx + new_boid->vy*new_boid->vy);
                 if (speed < MINSPEED) {
