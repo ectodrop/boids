@@ -14,12 +14,19 @@ typedef struct Boid_t {
 
 double rand_double();
 int can_see(Boid *boid, Boid *other);
-void update_boids(Boid boids[N]);
+void update_boids(Boid *boids, const int N);
 
 int main(int argc, char** argv) {
     srand(0);
+    if (argc < 2) {
+        fprintf(stderr, "missing argument 1: num_boids\n");
+        exit(1);
+    }
+    const int N = atoi(argv[1]);
     Boid boids[N];
-    FILE *file = fopen(OUTPUTFILE, "wb");
+    FILE *file;
+    if (PER != 0) file = fopen(OUTPUTFILE, "wb");
+
 
     struct timeval timer;
     tick(&timer);
@@ -36,17 +43,15 @@ int main(int argc, char** argv) {
 
     // update loop
     for (int i = 0; i < TIMESTEPS; i++) {
-        dump(file, boids, sizeof(Boid), N);
-        update_boids(boids);
+        if (PER != 0 && i % PER == 0)
+            dump(file, boids, sizeof(Boid), N);
+        update_boids(&boids[0], N);
     }
-    fclose(file);
-    printf("simulation took: %fs, starting plotting\n", tock(&timer));
+    if (PER != 0)
+        fclose(file);
+    printf("simulation took: %f\n", tock(&timer));
 
     tick(&timer);
-    create_gnuplot_script(OUTPUTFILE);
-    create_gif();
-
-    printf("plotting took: %f\n", tock(&timer));
 }
 
 
@@ -69,12 +74,12 @@ int can_see(Boid *boid, Boid *other) {
     return ((dot*dot)/(dnorm*vnorm) > theta*theta);
 }
 
-void update_boids(Boid boids[N]) {
+void update_boids(Boid *boids, const int N) {
     Boid old_boids[N];
     for (int i = 0; i < N; i++) {
         old_boids[i] = boids[i];
     }
-    #pragma omp parallel for default(none) shared(boids, old_boids)
+    #pragma omp parallel for default(none) shared(N, boids, old_boids)
     for (int i = 0; i < N; i++) {
         double neighbouring_boids = 0;
         double xpos_avg=0, ypos_avg=0, xvel_avg=0, yvel_avg=0, close_dx=0, close_dy=0;

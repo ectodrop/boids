@@ -19,10 +19,9 @@ typedef struct Boid_t {
 } Boid;
 
 
-int distance_checks = 0;
 double rand_double();
 int can_see(Boid *boid, Boid *other);
-void update_boids(int grid[GRID_ROWS+2][GRID_COLS+2], Boid *old_boids, Boid *new_boids);
+void update_boids(int grid[GRID_ROWS+2][GRID_COLS+2], Boid *old_boids, Boid *new_boids, const int N);
 
 void grid_insert(int grid[GRID_ROWS+2][GRID_COLS+2], Boid *boids, int boid) {
     int i = fmin(GRID_ROWS, fmax(boids[boid].py / CELL_SIZE + 1,0)); 
@@ -60,15 +59,23 @@ void grid_recalculate(int grid[GRID_ROWS+2][GRID_COLS+2], Boid *boids, int new_b
 
 int main(int argc, char** argv) {
     srand(0);
+    if (argc < 2) {
+        fprintf(stderr, "missing argument 1: num_boids\n");
+        exit(1);
+    }
+    const int N = atoi(argv[1]);
     int grid[GRID_ROWS+2][GRID_COLS+2];
     for (int i = 0; i < GRID_ROWS+2; i++) {
         for (int j = 0; j < GRID_COLS+2; j++) {
             grid[i][j] = -1;
         }
     }
+
     Boid *old_boids = new Boid[N];
     Boid *new_boids = new Boid[N];
-    FILE *file = fopen(OUTPUTFILE, "wb");
+
+    FILE *file;
+    if (PER != 0) file = fopen(OUTPUTFILE, "wb");
 
     struct timeval timer;
     tick(&timer);
@@ -93,18 +100,16 @@ int main(int argc, char** argv) {
     // update loop
     printf("sizeof %ld %ld %ld\n", sizeof(double),sizeof(int),sizeof(Boid));
     for (int i = 0; i < TIMESTEPS; i++) {
-        dump(file, old_boids, sizeof(Boid), N);
-        update_boids(grid, old_boids, new_boids);
+        if (PER != 0 && i % PER == 0)
+            dump(file, old_boids, sizeof(Boid), N);
+        update_boids(grid, old_boids, new_boids, N);
     }
 
-    fclose(file);
-    printf("simulation took: %fs, starting plotting %d\n", tock(&timer), distance_checks);
+    if (PER != 0)
+        fclose(file);
+    printf("simulation took: %fs\n", tock(&timer));
 
     tick(&timer);
-    create_gnuplot_script(OUTPUTFILE);
-    create_gif();
-
-    printf("plotting took: %f\n", tock(&timer));
     free(new_boids);
     free(old_boids);
 }
@@ -128,7 +133,7 @@ int can_see(Boid *boid, Boid *other) {
     return ((dot*dot)/(dnorm*vnorm) > theta*theta);
 }
 
-void update_boids(int grid[GRID_ROWS+2][GRID_COLS+2], Boid *old_boids, Boid *new_boids) {
+void update_boids(int grid[GRID_ROWS+2][GRID_COLS+2], Boid *old_boids, Boid *new_boids, const int N) {
     int old_grid[GRID_ROWS+2][GRID_COLS+2];
 
     for (int i = 0; i < GRID_ROWS+2; i++) {
@@ -167,7 +172,6 @@ void update_boids(int grid[GRID_ROWS+2][GRID_COLS+2], Boid *old_boids, Boid *new
                                 }
                             } else if (dst_sqr < VRANGE*VRANGE) {
                                 if (can_see(boid, other)) {
-                                    distance_checks++;
                                     xpos_avg += other->px;
                                     ypos_avg += other->py;
                                     xvel_avg += other->vx;

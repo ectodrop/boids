@@ -2,7 +2,9 @@
 set -e
 
 # Define the data file prefix and the gnuplot script
-DATA_PREFIX=$1
+N=$1
+DATA_PREFIX=$2
+OUTPUT_FILE=$3
 GNUPLOT_SCRIPT="animation.gnuplot"
 
 # Check if the gnuplot script exists
@@ -12,10 +14,10 @@ if [[ ! -f $GNUPLOT_SCRIPT ]]; then
 fi
 
 # Find all files with the specified prefix
-find . -type f -name "${DATA_PREFIX}*" -printf "%f %s\n" | sort -V | parallel --colsep ' ' gnuplot -c $GNUPLOT_SCRIPT {1} {2} {1}.gif
+find . -type f -name "${DATA_PREFIX}*" -printf "%f %s\n" | sort -V | parallel --colsep ' ' gnuplot -c $GNUPLOT_SCRIPT {1} {2} {1}.gif $N
 
 # echo ${DATA_PREFIX}-*.gif
 
-convert ${DATA_PREFIX}*.gif $2
+convert ${DATA_PREFIX}*.gif $OUTPUT_FILE
 
 rm -f ${DATA_PREFIX}*.gif ${DATA_PREFIX}*.bin 

@@ -3,8 +3,8 @@
 #ifndef __processing_h
 #define __processing_h
 
-void create_gif();
-void create_gnuplot_script(const char *);
+// void create_gif();
+// void create_gnuplot_script(const char *);
 void dump(FILE *file, void *boids, size_t s, int n);
-void aggregate_partial(const int mpi_size, const char *pattern, const char *outputfile);
+void aggregate_partial(const int N, const int mpi_size, const char *pattern, const char *outputfile);
 #endif

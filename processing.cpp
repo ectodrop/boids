@@ -1,35 +1,27 @@
 #include "processing.h"
 #include <glob.h>
 
-void create_gif() {
-    // Generate PNGs using gnuplot
-    system("gnuplot animation.gnuplot");
+// void create_gnuplot_script(const char *output_file) {
+//     FILE *file = fopen("animation.gnuplot", "w");
+//     if (!file) {
+//         perror("Error creating gnuplot script");
+//         exit(EXIT_FAILURE);
+//     }
 
-    // Clean up intermediate files
-    system("rm animation.gnuplot");
-}
+//     fprintf(file, "set terminal gif animate delay 4\n");
+//     fprintf(file, "set output ARG3\n");
+//     fprintf(file, "set xrange [0:%d]\n", WIDTH);
+//     fprintf(file, "set yrange [0:%d]\n", HEIGHT);
+//     fprintf(file, "N = %d\n", N);
+//     fprintf(file, "records = ARG2/(2*8*N)\n");
+//     fprintf(file, "unset key\n");
+//     fprintf(file, "set style line 1 pt 7 ps 0.1 lc rgb 'blue'\n");
 
-void create_gnuplot_script(const char *output_file) {
-    FILE *file = fopen("animation.gnuplot", "w");
-    if (!file) {
-        perror("Error creating gnuplot script");
-        exit(EXIT_FAILURE);
-    }
-
-    fprintf(file, "set terminal gif animate delay 4\n");
-    fprintf(file, "set output ARG3\n");
-    fprintf(file, "set xrange [0:%d]\n", WIDTH);
-    fprintf(file, "set yrange [0:%d]\n", HEIGHT);
-    fprintf(file, "N = %d\n", N);
-    fprintf(file, "records = ARG2/(2*8*N)\n");
-    fprintf(file, "unset key\n");
-    fprintf(file, "set style line 1 pt 7 ps 0.1 lc rgb 'blue'\n");
-
-    fprintf(file, "do for [i=0:records-1] {\n");
-    fprintf(file, "  plot ARG1 binary format='%%double%%double' every ::(i*N)::((i+1)*N) using 1:2 with points ls 1\n");
-    fprintf(file, "}\n");
-    fclose(file);
-}
+//     fprintf(file, "do for [i=0:records-1] {\n");
+//     fprintf(file, "  plot ARG1 binary format='%%double%%double' every ::(i*N)::((i+1)*N) using 1:2 with points ls 1\n");
+//     fprintf(file, "}\n");
+//     fclose(file);
+// }
 
 
 void dump(FILE *file, void *boids, size_t s, int n) {
@@ -41,7 +33,7 @@ void dump(FILE *file, void *boids, size_t s, int n) {
 }
 
 
-void aggregate_partial(const int num_mpi, const char *pattern, const char *outputfile) {
+void aggregate_partial(const int N, const int num_mpi, const char *pattern, const char *outputfile) {
     glob_t globbuf;
     FILE *files[num_mpi];
     int block_size[num_mpi];

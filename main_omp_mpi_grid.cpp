@@ -36,13 +36,11 @@ typedef struct Boid_t {
 } Boid;
 
 
-int distance_checks = 0;
-int num_boids = 0;
 double rand_double();
 int can_see(Boid *boid, Boid *other);
 void update_boids(int rank, int grid[LOCAL_GRID_ROWS+2][LOCAL_GRID_COLS+2], Boid *old_boids, Boid *new_boids);
 
-void dump_grid(FILE *file, int grid[LOCAL_GRID_ROWS+2][LOCAL_GRID_COLS+2], Boid *boids) {
+void dump_grid(FILE *file, int grid[LOCAL_GRID_ROWS+2][LOCAL_GRID_COLS+2], Boid *boids, const int N) {
     double boids_buf[N*2];
     int total = 0;
     for (int i = 1; i <= LOCAL_GRID_ROWS; i++) {
@@ -131,6 +129,11 @@ int main(int argc, char** argv) {
             grid[i][j] = -1;
         }
     }
+    if (argc < 2) {
+        fprintf(stderr, "missing argument 1: num_boids\n");
+        exit(1);
+    }
+    const int N = atoi(argv[1]);
     int rank, size;
     const int nfields = 7;
     MPI_Datatype boid_types[nfields] = { MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_INT, MPI_INT, MPI_INT };
@@ -166,7 +169,8 @@ int main(int argc, char** argv) {
     sprintf(filename, OUTPUTFILE, rank,0);
     sprintf(aggregate_filename, AGGREGATE_OUTPUTFILE, 0);
     sprintf(search_str, OUTPUTFILESEARCH, 0);
-    FILE *file = fopen(filename, "wb");
+    FILE *file;
+    if (PER != 0) file = fopen(OUTPUTFILE, "wb");
 
     struct timeval timer;
     tick(&timer);
@@ -188,8 +192,6 @@ int main(int argc, char** argv) {
 
         if ((0 <= boid_i && boid_i <= LOCAL_GRID_ROWS+1) && (0 <= boid_j && boid_j <= LOCAL_GRID_COLS+1)) {
             // this is our boid
-            num_boids++;
-
             b->prev = -1;
             b->next = grid[boid_i][boid_j];
             if (grid[boid_i][boid_j] != -1)
@@ -242,7 +244,7 @@ int main(int argc, char** argv) {
             MPI_Barrier(MPI_COMM_WORLD);
             sprintf(filename, OUTPUTFILE, rank, (int)(i/TIMECHUNK));
             if (rank == 0) {
-                aggregate_partial(size, search_str, aggregate_filename);
+                aggregate_partial(N, size, search_str, aggregate_filename);
                 sprintf(aggregate_filename, AGGREGATE_OUTPUTFILE, (int)(i/TIMECHUNK));
                 sprintf(search_str, OUTPUTFILESEARCH, (int)(i/TIMECHUNK));
             }
@@ -374,7 +376,8 @@ int main(int argc, char** argv) {
 
             }
         }
-        dump_grid(file, grid, new_boids);
+        if (PER != 0 && i % PER == 0)
+            dump_grid(file, grid, new_boids, N);
         // dump(file, new_boids, sizeof(Boid), N);
         MPI_Waitall(5, send_requests, MPI_STATUSES_IGNORE);
 
@@ -384,14 +387,12 @@ int main(int argc, char** argv) {
 
     }
 
-
-    fclose(file);
+    if (PER != 0)
+        fclose(file);
     if (rank == 0) {
-        aggregate_partial(size, search_str, aggregate_filename);
+        aggregate_partial(N,size, search_str, aggregate_filename);
     }
-    printf("simulation took: %fs, creating plot script %d\n", tock(&timer), distance_checks);
-
-    create_gnuplot_script(OUTPUTFILE);
+    printf("simulation took: %fs\n", tock(&timer));
 
     free(new_boids);
     free(old_boids);
