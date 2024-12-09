@@ -110,8 +110,8 @@ int main(int argc, char** argv) {
     printf("simulation took: %fs\n", tock(&timer));
 
     tick(&timer);
-    free(new_boids);
-    free(old_boids);
+    delete [] new_boids;
+    delete [] old_boids;
 }
 
 

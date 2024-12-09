@@ -394,11 +394,11 @@ int main(int argc, char** argv) {
     }
     printf("simulation took: %fs\n", tock(&timer));
 
-    free(new_boids);
-    free(old_boids);
-    free(recv_boids);
-    free(send_boids);
-    free(send_ids);
+    delete [] new_boids;
+    delete [] old_boids;
+    delete [] recv_boids;
+    delete [] send_boids;
+    delete [] send_ids;
 
     MPI_Finalize();
 }

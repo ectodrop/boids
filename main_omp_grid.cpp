@@ -136,9 +136,9 @@ int main(int argc, char** argv) {
         fclose(file);
     printf("simulation took: %fs\n", tock(&timer));
 
-    free(new_boids);
-    free(old_boids);
-    free(buffer);
+    delete [] new_boids;
+    delete [] old_boids;
+    delete [] buffer;
 }
 
 
