@@ -1,6 +1,6 @@
 # Compiler and compiler flags
 CC = mpicxx
-CFLAGS = -Wall -g -O0
+CFLAGS = -Wall -g -O3
 LIBS= -lm -fopenmp
 
 # Source files (modify these lists as needed)

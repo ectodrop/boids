@@ -317,7 +317,7 @@ int main(int argc, char** argv) {
             }
         }
         if (corner != MPI_PROC_NULL) {
-            int row,col;
+            int row = 0,col = 0;
             if (rank == 0) {
                 row = LOCAL_GRID_ROWS;
                 col = LOCAL_GRID_COLS;
