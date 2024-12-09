@@ -138,7 +138,7 @@ int main(int argc, char** argv) {
 
     delete [] new_boids;
     delete [] old_boids;
-    delete [] buffer;
+    free(buffer);
 }
 
 
