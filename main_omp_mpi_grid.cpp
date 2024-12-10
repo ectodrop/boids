@@ -367,7 +367,8 @@ int main(int argc, char** argv) {
     if (rank == 0) {
         aggregate_partial(N,size, search_str, aggregate_filename);
     }
-    printf("simulation took: %fs\n", tock(&timer));
+		if (rank == 0)
+			printf("%f\n", tock(&timer));
 
     delete [] new_boids;
     delete [] old_boids;
