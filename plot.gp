@@ -1,6 +1,6 @@
 
-if (!exists("question")) question='default'
-if (!exists("serial")) serial=0.5
+question = ARG1
+serial = 0.1
 
 filename=sprintf('%s.dat',question)
 
@@ -16,8 +16,6 @@ first_value = STATS_max
 
 set xrange [0<*:]
 set yrange [0<*:]
-
-
 
 
 set xlabel 'omp threads'

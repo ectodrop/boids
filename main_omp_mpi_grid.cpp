@@ -226,19 +226,6 @@ int main(int argc, char** argv) {
     const int neighbours[5] = { top_rank, bot_rank, left_rank, right_rank, corner};
     // update loop
     for (int i = 0; i < TIMESTEPS; i++) {
-        printf("time %d\n", i);
-        for (int row = 0; row < LOCAL_GRID_ROWS+2; row++) {
-            for (int col = 0; col < LOCAL_GRID_COLS+2; col++) {
-                int ind = grid[row][col];
-                int count = 0;
-                while (ind != -1) {
-                    count++;
-                    ind = new_boids[ind].next;
-                }
-                printf("%4d,", count);
-            }
-            printf("\n");
-        }
         if (i > 0 && i % TIMECHUNK == 0) {
             fclose(file);
             MPI_Barrier(MPI_COMM_WORLD);
@@ -251,18 +238,6 @@ int main(int argc, char** argv) {
             file = fopen(filename, "wb");
         }
         update_boids(rank, grid, old_boids, new_boids);
-        for (int row = 0; row < LOCAL_GRID_ROWS+2; row++) {
-            for (int col = 0; col < LOCAL_GRID_COLS+2; col++) {
-                int ind = grid[row][col];
-                int count = 0;
-                while (ind != -1) {
-                    count++;
-                    ind = new_boids[ind].next;
-                }
-                printf("%4d,", count);
-            }
-            printf("\n");
-        }
         int counts[5] = { 0 };
 
         int ind, j, boid_mi, boid_mj;

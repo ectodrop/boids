@@ -134,7 +134,7 @@ int main(int argc, char** argv) {
 
     if (PER != 0)
         fclose(file);
-    printf("simulation took: %fs\n", tock(&timer));
+    printf("%f\n", tock(&timer));
 
     delete [] new_boids;
     delete [] old_boids;
