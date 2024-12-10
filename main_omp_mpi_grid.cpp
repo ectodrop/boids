@@ -226,7 +226,7 @@ int main(int argc, char** argv) {
     const int neighbours[5] = { top_rank, bot_rank, left_rank, right_rank, corner};
     // update loop
     for (int i = 0; i < TIMESTEPS; i++) {
-        if (i > 0 && i % TIMECHUNK == 0) {
+        if (i > 0 && i % TIMECHUNK == 0 && PER > 0) {
             fclose(file);
             MPI_Barrier(MPI_COMM_WORLD);
             sprintf(filename, OUTPUTFILE, rank, (int)(i/TIMECHUNK));
