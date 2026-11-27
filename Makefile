@@ -1,37 +1,34 @@
 # Compiler and compiler flags
-CC = mpicxx
-CFLAGS = -Wall -g -O3
-LIBS= -lm -fopenmp
+CC      = mpicxx
+CFLAGS  = -Wall -g -O3 -Isrc
+LIBS    = -lm -fopenmp
 
-# Source files (modify these lists as needed)
-MAINSRCS = main_serial.cpp main_serial_grid.cpp main_omp.cpp main_omp_grid.cpp main_omp_mpi_grid.cpp
-OTHERSRCS = $(filter-out $(MAINSRCS), $(wildcard *.cpp))
+SRC_DIR   = src
+BUILD_DIR = build
+BIN_DIR   = bin
 
-# Header files
-HEADERS := $(wildcard *.h)
+# Each of these sources contains its own main() and becomes one executable
+MAINS     = main_serial main_serial_grid main_omp main_omp_grid main_omp_mpi_grid
+MAINSRCS  = $(addprefix $(SRC_DIR)/,$(addsuffix .cpp,$(MAINS)))
+OTHERSRCS = $(filter-out $(MAINSRCS), $(wildcard $(SRC_DIR)/*.cpp))
+HEADERS   = $(wildcard $(SRC_DIR)/*.h)
 
-# Object files
-MAINOBJS = $(MAINSRCS:.cpp=.o)
-OTHEROBJS = $(OTHERSRCS:.cpp=.o)
+OTHEROBJS   = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(OTHERSRCS))
+EXECUTABLES = $(addprefix $(BIN_DIR)/,$(MAINS))
 
-# Executable names (derived from main source files)
-EXECUTABLES = $(MAINSRCS:.cpp=)
-
-# Default target
+.PHONY: all clean
 all: $(EXECUTABLES)
 
-# Rule to build object files from other source files
-$(OTHEROBJS): %.o : %.cpp $(HEADERS)
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp $(HEADERS) | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@ $(LIBS)
 
-# Rule to build object files from main source files
-$(MAINOBJS): %.o : %.cpp $(HEADERS)
-	$(CC) $(CFLAGS) -c $< -o $@ $(LIBS)
-
-# Rule to link executables
-$(EXECUTABLES): % : %.o $(OTHEROBJS)
+$(BIN_DIR)/%: $(BUILD_DIR)/%.o $(OTHEROBJS) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ $< $(OTHEROBJS) $(LIBS)
 
-# Clean up generated files
+$(BUILD_DIR) $(BIN_DIR):
+	mkdir -p $@
+
+.PRECIOUS: $(BUILD_DIR)/%.o
+
 clean:
-	rm -f $(EXECUTABLES) *.o *.bin
+	rm -rf $(BUILD_DIR) $(BIN_DIR) *.bin

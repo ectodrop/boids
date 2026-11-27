@@ -14,6 +14,6 @@ num_boids=0
 for i in $(seq 1 16)
 do
 num_boids=$((num_boids+3000))
-echo $i $(OMP_NUM_THREADS=$i ./main_omp_grid $num_boids)
+echo $i $(OMP_NUM_THREADS=$i ./bin/main_omp_grid $num_boids)
 done
 

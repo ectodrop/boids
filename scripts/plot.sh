@@ -5,7 +5,7 @@ set -e
 N=$1
 DATA_PREFIX=$2
 OUTPUT_FILE=$3
-GNUPLOT_SCRIPT="animation.gnuplot"
+GNUPLOT_SCRIPT="$(dirname "$0")/animation.gnuplot"
 
 # Check if the gnuplot script exists
 if [[ ! -f $GNUPLOT_SCRIPT ]]; then

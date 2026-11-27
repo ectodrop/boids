@@ -76,8 +76,11 @@ int main(int argc, char** argv) {
     }
     const int N = atoi(argv[1]);
     buf = buffer;
-    fread(buf, buf_size, 1, f);
-    fclose(f);
+    // optional image-attractor data (experimental, see commented code in update_boids)
+    if (f) {
+        fread(buf, buf_size, 1, f);
+        fclose(f);
+    }
     buf += IMAGE_HEIGHT*IMAGE_WIDTH*30;
     int grid[GRID_ROWS+2][GRID_COLS+2];
     for (int i = 0; i < GRID_ROWS+2; i++) {

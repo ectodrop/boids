@@ -1,12 +1,18 @@
-
+# Build output
+build/
+bin/
 *.o
 *.bin
-.vscode
-main_serial
-main_serial_grid
-main_omp
-main_omp_grid
-main_omp_mpi_grid
-random_gifs
-apple
-images
+
+# Profiling / debugging leftovers
+gmon.out
+*.gdb
+output_*.log
+
+# Editor
+.vscode/
+
+# Large local experiments (not part of the project)
+random_gifs/
+apple/
+images/

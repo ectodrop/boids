@@ -16,7 +16,7 @@ echo $HOSTS
 num_boids=5000
 for i in $(seq 1 16)
 do
-	echo $i $(mpirun --quiet -np 4 --host $HOSTS -x OMP_NUM_THREADS=$i ./main_omp_mpi_grid $num_boids)
+	echo $i $(mpirun --quiet -np 4 --host $HOSTS -x OMP_NUM_THREADS=$i ./bin/main_omp_mpi_grid $num_boids)
 done
 
 # parallel --workdir $SLURM_SUBMIT_DIR -j $SLURM_NTASKS_PER_NODE -S $HOSTS \
